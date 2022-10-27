@@ -8,7 +8,7 @@ const MIME_TYPES = {
     "image/gif": "jpg",
 };
 
-const storage = multer.diskStorage({
+const postStorage = multer.diskStorage({
     destination: function(req, file, cb) {
         cb(null, path.join(__dirname, '../public/photos'));
     },
@@ -22,6 +22,24 @@ const storage = multer.diskStorage({
     }
 });
 
-const upload = multer({ storage });
+const avatarStorage = multer.diskStorage({
+    destination: function(req, file, cb) {
+        cb(null, path.join(__dirname, '../public/avatars'));
+    },
+    filename: function(req, file, cb) {
+        const suffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const extension = MIME_TYPES[file.mimetype];
 
-module.exports = upload;
+        const filename = `${suffix}.${extension}`;
+
+        cb(null, filename);
+    }
+})
+
+const post = multer({ storage: postStorage });
+const avatar = multer({ storage: avatarStorage });
+
+module.exports = {
+    post,
+    avatar,
+};

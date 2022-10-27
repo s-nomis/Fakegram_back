@@ -2,6 +2,9 @@ const mongoose = require("mongoose");
 const validator = require("validator");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const fs = require("fs");
+const Comment = require("./comment.model");
+const Photo = require("./photo.model");
 
 const userSchema = new mongoose.Schema(
     {
@@ -15,11 +18,12 @@ const userSchema = new mongoose.Schema(
             unique: true,
             required: true,
             trim: true,
+            lowercase: true,
             minlength: 4,
             validate(v) {
                 const regex = new RegExp("^[a-zA-Z][a-zA-Z0-9_.-]{3,19}$");
                 if (!regex.test(v)) {
-                    throw new Error("Username is invalid!");
+                    throw new Error("Le nom d'utilisateur est invalide.");
                 }
             },
         },
@@ -31,7 +35,7 @@ const userSchema = new mongoose.Schema(
             lowercase: true,
             validate(v) {
                 if (!validator.isEmail(v)) {
-                    throw new Error("Email is invalid!");
+                    throw new Error("L'adresse email est invalide.");
                 }
             },
         },
@@ -54,7 +58,7 @@ const userSchema = new mongoose.Schema(
             trim: true,
             validate(v) {
                 if (!validator.isMobilePhone(v)) {
-                    throw new Error("Phone is invalid!");
+                    throw new Error("Le numéro de téléphone est invalide.");
                 }
             },
         },
@@ -65,12 +69,6 @@ const userSchema = new mongoose.Schema(
         avatar: {
             type: String,
         },
-        saved_posts: [
-            {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "Photo",
-            },
-        ],
         role: {
             type: String,
             default: "user",
@@ -88,6 +86,18 @@ userSchema.virtual("photos", {
     ref: "Photo",
     localField: "_id",
     foreignField: "owner",
+});
+
+userSchema.virtual("liked_posts", {
+    ref: "Photo",
+    localField: "_id",
+    foreignField: "likes",
+});
+
+userSchema.virtual("saved_posts", {
+    ref: "Photo",
+    localField: "_id",
+    foreignField: "favorites",
 });
 
 userSchema.statics.findByCredentials = async (email, password) => {
@@ -147,6 +157,65 @@ userSchema.pre("save", async function (next) {
 
         this.password = await bcrypt.hash(this.password, 8);
     }
+
+    next();
+});
+
+/**
+ * Supprime les posts sur d'un utilisateur lors de sa suppression
+ */
+userSchema.pre("remove", async function (next) {
+    try {
+        const photos = await Photo.find({ owner: this._id });
+        photos.forEach(async (photo) => {
+            const filename = photo.image.split("/photos/")[1];
+            fs.unlinkSync(`src/public/photos/${filename}`);
+
+            await photo.remove();
+        });
+
+        next();
+    } catch (err) {
+        console.log(err);
+        return;
+    }
+});
+
+/**
+ * Supprime les commentaires d'un utilisateur lors de sa suppression
+ */
+userSchema.pre("remove", async function (next) {
+    await Comment.deleteMany({ owner: this._id });
+
+    next();
+});
+
+/**
+ * Enleve le like aux post concerné lors de la suppression d'un utilisateur
+ */
+userSchema.pre("remove", async function (next) {
+    const photos = await Photo.find({ likes: { $all: [this._id] } });
+    photos.forEach(async (photo) => {
+        photo.likes = photo.likes.filter(
+            (id) => id.toString() !== this._id.toString()
+        );
+        await photo.save();
+    });
+
+    next();
+});
+
+/**
+ * Enleve le favoris aux post concerné lors de la suppression d'un utilisateur
+ */
+userSchema.pre("remove", async function (next) {
+    const photos = await Photo.find({ favorites: { $all: [this._id] } });
+    photos.forEach(async (photo) => {
+        photo.favorites = photo.favorites.filter(
+            (id) => id.toString() !== this._id.toString()
+        );
+        await photo.save();
+    });
 
     next();
 });

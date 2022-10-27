@@ -4,7 +4,7 @@ const Photo = require("../models/photo.model");
 exports.create = async (req, res) => {
     if (!req.file) {
         return res.status(500).json({
-            message: "Error when creating photo",
+            message: "Error when creating post : No file selected",
         });
     }
 
@@ -18,9 +18,10 @@ exports.create = async (req, res) => {
         });
 
         await photo.save();
+        await photo.populate("owner");
+
         res.status(201).json(photo);
     } catch (err) {
-        console.log(err);
         res.status(500).json({
             message: err,
         });
@@ -49,12 +50,20 @@ exports.findOne = async (req, res) => {
 
 exports.findAll = async (req, res) => {
     try {
+        const pagination = req.query.pagination
+            ? parseInt(req.query.pagination)
+            : 5;
+        const pageNumber = req.query.page && parseInt(req.query.page);
+
         const photos = await Photo.find({})
             .populate("owner")
             .populate({
                 path: "comments",
                 populate: { path: "owner" },
-            });
+            })
+            .sort({ createdAt: "desc" })
+            .skip((pageNumber - 1) * pagination)
+            .limit(pagination);
 
         if (!photos) {
             return res.status(404).json({
@@ -99,7 +108,7 @@ exports.updateOne = async (req, res) => {
             }
 
             return res.status(404).json({
-                error: "Photo not found",
+                message: "Photo not found",
             });
         }
 
@@ -121,6 +130,8 @@ exports.updateOne = async (req, res) => {
         });
 
         await photo.save();
+        await photo.populate("owner");
+
         res.status(200).json(photo);
     } catch (err) {
         fs.unlinkSync(req.file.path);
@@ -132,7 +143,7 @@ exports.updateOne = async (req, res) => {
 
 exports.deleteOne = async (req, res) => {
     try {
-        const photo = await Photo.findOneAndDelete({
+        const photo = await Photo.findOne({
             _id: req.params.photoId,
             owner: req.user._id,
         });
@@ -146,6 +157,8 @@ exports.deleteOne = async (req, res) => {
         const filename = photo.image.split("/photos/")[1];
         fs.unlinkSync(`src/public/photos/${filename}`);
 
+        await photo.remove();
+
         res.status(200).json(photo);
     } catch (err) {
         res.status(500).json({
@@ -154,9 +167,6 @@ exports.deleteOne = async (req, res) => {
     }
 };
 
-/**
- * TODO: Vérif si le post est trouvé dans la bdd
- */
 exports.toggleLikedPost = async (req, res) => {
     try {
         const postId = req.params.postId;
@@ -180,7 +190,43 @@ exports.toggleLikedPost = async (req, res) => {
 
         res.status(200).json(photo);
     } catch (err) {
-        console.log(err);
-        res.status(400).json(err);
+        res.status(400).json({ message: err.message });
+    }
+};
+
+exports.toggleSavedPost = async (req, res) => {
+    try {
+        const postId = req.params.postId;
+        const photo = await Photo.findById(postId).populate("owner");
+
+        if (!photo) {
+            return res.status(404).json({ message: "Post not found" });
+        }
+
+        if (photo.favorites.includes(req.user._id)) {
+            //Remove from fav
+            photo.favorites = photo.favorites.filter(
+                (id) => id.toString() !== req.user._id.toString()
+            );
+        } else {
+            //Add to fav
+            photo.favorites.push(req.user._id);
+        }
+
+        await photo.save();
+
+        res.status(200).json(photo);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+};
+
+exports.getMaxPostsLength = async (req, res) => {
+    try {
+        const nb = await Photo.estimatedDocumentCount();
+
+        res.status(200).json(nb);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
     }
 };

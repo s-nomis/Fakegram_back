@@ -1,7 +1,9 @@
 const User = require("../models/user.model");
 
-exports.getAuthUser = async (req, res) => {
-    res.status(200).json(req.user);
+exports.verifyToken = async (req, res) => {
+    const token = req.user.generateAuthToken();
+
+    res.status(200).json({ result: req.user, token });
 };
 
 exports.register = async (req, res) => {
@@ -54,12 +56,5 @@ exports.login = async (req, res) => {
 };
 
 exports.logout = async (req, res) => {
-    try {
-        req.user = undefined;
-
-        //await req.user.save();
-        res.status(200).json("User successfully logged out");
-    } catch (err) {
-        res.status(500).json(err);
-    }
+    res.status(200).json("User successfully logged out");
 };
