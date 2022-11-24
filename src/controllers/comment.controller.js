@@ -1,20 +1,20 @@
 const Comment = require("../models/comment.model");
-const Photo = require("../models/photo.model");
+const Post = require("../models/post.model");
 
 exports.create = async (req, res) => {
     try {
-        const photo = await Photo.findById(req.params.photoId);
+        const post = await Post.findById(req.params.postId);
 
-        if (!photo) {
+        if (!post) {
             return res.status(404).json({
-                message: "Photo not found",
+                message: "Post not found",
             });
         }
 
         const comment = new Comment({
             ...req.body,
             owner: req.user._id,
-            photo: req.params.photoId,
+            post: req.params.postId,
         });
 
         await comment.save();
@@ -31,7 +31,7 @@ exports.create = async (req, res) => {
 exports.findAll = async (req, res) => {
     try {
         const comments = await Comment.find({
-            photo: req.params.photoId,
+            post: req.params.postId,
         }).populate("owner");
 
         res.status(200).json(comments);
@@ -46,7 +46,7 @@ exports.findOne = async (req, res) => {
     try {
         const comment = await Comment.findOne({
             _id: req.params.commentId,
-            photo: req.params.photoId,
+            post: req.params.postId,
         });
 
         if (!comment) {
@@ -81,7 +81,7 @@ exports.updateOne = async (req, res) => {
         const comment = await Comment.findOne({
             _id: req.params.commentId,
             owner: req.user._id,
-            photo: req.params.photoId,
+            post: req.params.postId,
         });
 
         if (!comment) {
@@ -108,7 +108,7 @@ exports.deleteOne = async (req, res) => {
         const comment = await Comment.findOneAndDelete({
             _id: req.params.commentId,
             owner: req.user._id,
-            photo: req.params.photoId,
+            post: req.params.postId,
         });
 
         if (!comment) {

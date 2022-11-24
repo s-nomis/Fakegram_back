@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const Comment = require("./comment.model");
 const User = require("./user.model");
 
-const photoSchema = new mongoose.Schema(
+const postSchema = new mongoose.Schema(
     {
         title: {
             type: String,
@@ -42,16 +42,16 @@ const photoSchema = new mongoose.Schema(
     }
 );
 
-photoSchema.virtual("comments", {
+postSchema.virtual("comments", {
     ref: "Comment",
     localField: "_id",
-    foreignField: "photo",
+    foreignField: "post",
 });
 
 /**
  * Retire le post des favoris lors de sa suppression
  */
-photoSchema.pre("remove", async function (next) {
+postSchema.pre("remove", async function (next) {
     // const users = await User.find({});
     // users.forEach(async (user) => {
     //     const fav = user.saved_posts.filter(
@@ -67,12 +67,12 @@ photoSchema.pre("remove", async function (next) {
 /**
  * Supprime des commentaires sur un post lors de sa suppression
  */
-photoSchema.pre("remove", async function (next) {
-    await Comment.deleteMany({ photo: this._id });
+postSchema.pre("remove", async function (next) {
+    await Comment.deleteMany({ post: this._id });
 
     next();
 });
 
-const Photo = mongoose.model("Photo", photoSchema);
+const Post = mongoose.model("Post", postSchema);
 
-module.exports = Photo;
+module.exports = Post;

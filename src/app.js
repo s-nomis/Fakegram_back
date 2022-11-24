@@ -5,7 +5,7 @@ const dotenv = require("dotenv");
 
 const authRouter = require("./routers/auth.router");
 const userRouter = require("./routers/user.router");
-const photoRouter = require("./routers/photo.router");
+const postRouter = require("./routers/post.router");
 const commentRouter = require("./routers/comment.router");
 
 const app = express();
@@ -19,7 +19,7 @@ app.use(express.static(path.join(__dirname, "public")));
 
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
-app.use("/api", photoRouter);
-app.use("/api", commentRouter);
+app.use("/api/posts", postRouter);
+app.use("/api/posts", commentRouter);
 
 module.exports = app;

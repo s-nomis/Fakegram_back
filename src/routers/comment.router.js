@@ -10,17 +10,13 @@ const router = new express.Router();
  * si la ressource appartient à l'utilisateur ou si il est admin
  */
 
-router.post("/photos/:photoId/comments", auth, controller.create);
+router.post("/:postId/comments", auth, controller.create);
 
-router.get("/photos/:photoId/comments", auth, controller.findAll);
-router.get("/photos/:photoId/comments/:commentId", auth, controller.findOne);
+router.get("/:postId/comments", auth, controller.findAll);
+router.get("/:postId/comments/:commentId", auth, controller.findOne);
 
-router.put("/photos/:photoId/comments/:commentId", auth, controller.updateOne);
+router.put("/:postId/comments/:commentId", auth, controller.updateOne);
 
-router.delete(
-    "/photos/:photoId/comments/:commentId",
-    auth,
-    controller.deleteOne
-);
+router.delete("/:postId/comments/:commentId", auth, controller.deleteOne);
 
 module.exports = router;

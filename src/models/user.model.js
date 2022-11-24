@@ -4,7 +4,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const fs = require("fs");
 const Comment = require("./comment.model");
-const Photo = require("./photo.model");
+const Post = require("./post.model");
 
 const userSchema = new mongoose.Schema(
     {
@@ -82,20 +82,20 @@ const userSchema = new mongoose.Schema(
     }
 );
 
-userSchema.virtual("photos", {
-    ref: "Photo",
+userSchema.virtual("posts", {
+    ref: "Post",
     localField: "_id",
     foreignField: "owner",
 });
 
 userSchema.virtual("liked_posts", {
-    ref: "Photo",
+    ref: "Post",
     localField: "_id",
     foreignField: "likes",
 });
 
 userSchema.virtual("saved_posts", {
-    ref: "Photo",
+    ref: "Post",
     localField: "_id",
     foreignField: "favorites",
 });
@@ -166,12 +166,12 @@ userSchema.pre("save", async function (next) {
  */
 userSchema.pre("remove", async function (next) {
     try {
-        const photos = await Photo.find({ owner: this._id });
-        photos.forEach(async (photo) => {
-            const filename = photo.image.split("/photos/")[1];
-            fs.unlinkSync(`src/public/photos/${filename}`);
+        const posts = await Post.find({ owner: this._id });
+        posts.forEach(async (post) => {
+            const filename = post.image.split("/posts/")[1];
+            fs.unlinkSync(`src/public/posts/${filename}`);
 
-            await photo.remove();
+            await post.remove();
         });
 
         next();
@@ -194,12 +194,12 @@ userSchema.pre("remove", async function (next) {
  * Enleve le like aux post concerné lors de la suppression d'un utilisateur
  */
 userSchema.pre("remove", async function (next) {
-    const photos = await Photo.find({ likes: { $all: [this._id] } });
-    photos.forEach(async (photo) => {
-        photo.likes = photo.likes.filter(
+    const posts = await Post.find({ likes: { $all: [this._id] } });
+    posts.forEach(async (post) => {
+        post.likes = post.likes.filter(
             (id) => id.toString() !== this._id.toString()
         );
-        await photo.save();
+        await post.save();
     });
 
     next();
@@ -209,12 +209,12 @@ userSchema.pre("remove", async function (next) {
  * Enleve le favoris aux post concerné lors de la suppression d'un utilisateur
  */
 userSchema.pre("remove", async function (next) {
-    const photos = await Photo.find({ favorites: { $all: [this._id] } });
-    photos.forEach(async (photo) => {
-        photo.favorites = photo.favorites.filter(
+    const posts = await Post.find({ favorites: { $all: [this._id] } });
+    posts.forEach(async (post) => {
+        post.favorites = post.favorites.filter(
             (id) => id.toString() !== this._id.toString()
         );
-        await photo.save();
+        await post.save();
     });
 
     next();

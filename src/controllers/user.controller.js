@@ -74,7 +74,7 @@ exports.getUserByUsername = async (req, res) => {
             username: req.params.username,
         })
             .populate({
-                path: "photos",
+                path: "posts",
                 populate: { path: "comments" },
             })
             .populate({
@@ -152,7 +152,7 @@ exports.updateUser = async (req, res) => {
 
 exports.updateAvatar = async (req, res) => {
     try {
-        const user = await User.findById(req.params.id).populate("photos");
+        const user = await User.findById(req.params.id).populate("posts");
 
         //Suppression de l'ancien avatar si ce n'est pas celui par defaut
         const oldAvatar = user.avatar;

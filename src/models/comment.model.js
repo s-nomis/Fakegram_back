@@ -12,9 +12,9 @@ const commentSchema = new mongoose.Schema(
             ref: "User",
             required: true,
         },
-        photo: {
+        post: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Photo",
+            ref: "Post",
             required: true,
         },
     },

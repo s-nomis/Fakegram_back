@@ -1,5 +1,5 @@
 const fs = require("fs");
-const Photo = require("../models/photo.model");
+const Post = require("../models/post.model");
 
 exports.create = async (req, res) => {
     if (!req.file) {
@@ -9,18 +9,18 @@ exports.create = async (req, res) => {
     }
 
     try {
-        const photo = new Photo({
+        const post = new Post({
             ...req.body,
-            image: `${req.protocol}://${req.get("host")}/photos/${
+            image: `${req.protocol}://${req.get("host")}/posts/${
                 req.file.filename
             }`,
             owner: req.user._id,
         });
 
-        await photo.save();
-        await photo.populate("owner");
+        await post.save();
+        await post.populate("owner");
 
-        res.status(201).json(photo);
+        res.status(201).json(post);
     } catch (err) {
         res.status(500).json({
             message: err,
@@ -30,17 +30,15 @@ exports.create = async (req, res) => {
 
 exports.findOne = async (req, res) => {
     try {
-        const photo = await Photo.findById(req.params.photoId).populate(
-            "owner"
-        );
+        const post = await Post.findById(req.params.postId).populate("owner");
 
-        if (!photo) {
+        if (!post) {
             return res.status(404).json({
-                message: "Photo not found",
+                message: "Post not found",
             });
         }
 
-        res.status(200).json(photo);
+        res.status(200).json(post);
     } catch (err) {
         res.status(500).json({
             message: err.message,
@@ -55,7 +53,7 @@ exports.findAll = async (req, res) => {
             : 5;
         const pageNumber = req.query.page && parseInt(req.query.page);
 
-        const photos = await Photo.find({})
+        const posts = await Post.find({})
             .populate("owner")
             .populate({
                 path: "comments",
@@ -65,13 +63,13 @@ exports.findAll = async (req, res) => {
             .skip((pageNumber - 1) * pagination)
             .limit(pagination);
 
-        if (!photos) {
+        if (!posts) {
             return res.status(404).json({
-                message: "Photos not found",
+                message: "Posts not found",
             });
         }
 
-        res.status(200).json(photos);
+        res.status(200).json(posts);
     } catch (err) {
         res.status(500).json({
             message: err.message,
@@ -97,42 +95,42 @@ exports.updateOne = async (req, res) => {
     }
 
     try {
-        const photo = await Photo.findOne({
-            _id: req.params.photoId,
+        const post = await Post.findOne({
+            _id: req.params.postId,
             owner: req.user.id,
         });
 
-        if (!photo) {
+        if (!post) {
             if (req.file) {
                 fs.unlinkSync(req.file.path);
             }
 
             return res.status(404).json({
-                message: "Photo not found",
+                message: "Post not found",
             });
         }
 
         if (req.file) {
             updates.push("image");
 
-            const oldPhoto = photo.image.split("/photos/")[1];
-            fs.unlinkSync(`src/public/photos/${oldPhoto}`);
+            const oldPost = post.image.split("/posts/")[1];
+            fs.unlinkSync(`src/public/posts/${oldPost}`);
         }
 
         updates.forEach((update) => {
             if (update === "image") {
-                photo[update] = `${req.protocol}://${req.get("host")}/photos/${
+                post[update] = `${req.protocol}://${req.get("host")}/posts/${
                     req.file.filename
                 }`;
             } else {
-                photo[update] = req.body[update];
+                post[update] = req.body[update];
             }
         });
 
-        await photo.save();
-        await photo.populate("owner");
+        await post.save();
+        await post.populate("owner");
 
-        res.status(200).json(photo);
+        res.status(200).json(post);
     } catch (err) {
         fs.unlinkSync(req.file.path);
         res.status(500).json({
@@ -143,23 +141,23 @@ exports.updateOne = async (req, res) => {
 
 exports.deleteOne = async (req, res) => {
     try {
-        const photo = await Photo.findOne({
-            _id: req.params.photoId,
+        const post = await Post.findOne({
+            _id: req.params.postId,
             owner: req.user._id,
         });
 
-        if (!photo) {
+        if (!post) {
             return res.status(404).json({
-                message: "Photo not found",
+                message: "Post not found",
             });
         }
 
-        const filename = photo.image.split("/photos/")[1];
-        fs.unlinkSync(`src/public/photos/${filename}`);
+        const filename = post.image.split("/posts/")[1];
+        fs.unlinkSync(`src/public/posts/${filename}`);
 
-        await photo.remove();
+        await post.remove();
 
-        res.status(200).json(photo);
+        res.status(200).json(post);
     } catch (err) {
         res.status(500).json({
             message: err.message,
@@ -170,25 +168,25 @@ exports.deleteOne = async (req, res) => {
 exports.toggleLikedPost = async (req, res) => {
     try {
         const postId = req.params.postId;
-        const photo = await Photo.findById(postId).populate("owner");
+        const post = await Post.findById(postId).populate("owner");
 
-        if (!photo) {
+        if (!post) {
             return res.status(404).json({ message: "Post not found" });
         }
 
-        if (photo.likes.includes(req.user._id)) {
+        if (post.likes.includes(req.user._id)) {
             //Remove from liked
-            photo.likes = photo.likes.filter(
+            post.likes = post.likes.filter(
                 (id) => id.toString() !== req.user._id.toString()
             );
         } else {
             //Add to liked
-            photo.likes.push(req.user._id);
+            post.likes.push(req.user._id);
         }
 
-        await photo.save();
+        await post.save();
 
-        res.status(200).json(photo);
+        res.status(200).json(post);
     } catch (err) {
         res.status(400).json({ message: err.message });
     }
@@ -197,25 +195,25 @@ exports.toggleLikedPost = async (req, res) => {
 exports.toggleSavedPost = async (req, res) => {
     try {
         const postId = req.params.postId;
-        const photo = await Photo.findById(postId).populate("owner");
+        const post = await Post.findById(postId).populate("owner");
 
-        if (!photo) {
+        if (!post) {
             return res.status(404).json({ message: "Post not found" });
         }
 
-        if (photo.favorites.includes(req.user._id)) {
+        if (post.favorites.includes(req.user._id)) {
             //Remove from fav
-            photo.favorites = photo.favorites.filter(
+            post.favorites = post.favorites.filter(
                 (id) => id.toString() !== req.user._id.toString()
             );
         } else {
             //Add to fav
-            photo.favorites.push(req.user._id);
+            post.favorites.push(req.user._id);
         }
 
-        await photo.save();
+        await post.save();
 
-        res.status(200).json(photo);
+        res.status(200).json(post);
     } catch (err) {
         res.status(400).json({ message: err.message });
     }
@@ -223,7 +221,7 @@ exports.toggleSavedPost = async (req, res) => {
 
 exports.getMaxPostsLength = async (req, res) => {
     try {
-        const nb = await Photo.estimatedDocumentCount();
+        const nb = await Post.estimatedDocumentCount();
 
         res.status(200).json(nb);
     } catch (err) {
